@@ -3,40 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PICTONE - Unlimited AI Generations</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>PICTONE - AI Tools</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        
+        .navbar { background: white; padding: 1rem 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
+        .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: bold; color: #6366f1; }
+        .nav-btn { background: #6366f1; color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; margin-left: 10px; }
+        .nav-btn:hover { background: #4f46e5; }
+        
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 2rem; }
+        .header { text-align: center; color: white; margin-bottom: 2rem; }
+        .header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        
+        .tool-selector { display: flex; gap: 1rem; justify-content: center; margin-bottom: 2rem; }
+        .tool-btn { background: white; border: none; padding: 1rem 2rem; border-radius: 12px; cursor: pointer; font-size: 1rem; }
+        .tool-btn.active { background: #6366f1; color: white; }
+        
+        .tool-container { display: none; background: white; padding: 2rem; border-radius: 16px; }
+        .tool-container.active { display: block; }
+        
+        textarea { width: 100%; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem; margin-bottom: 1rem; }
+        
+        .btn-generate { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; padding: 1rem 2rem; border-radius: 8px; font-size: 1.1rem; cursor: pointer; width: 100%; }
+        .btn-generate:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); }
+        
+        .output-section { margin-top: 2rem; display: none; }
+        .loader { text-align: center; padding: 2rem; }
+        .loader-ring { border: 4px solid #f3f4f6; border-top: 4px solid #6366f1; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .result-item img { max-width: 100%; border-radius: 12px; margin-bottom: 1rem; display: block; }
+        .download-btn { background: #10b981; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px; cursor: pointer; margin-right: 10px; }
+        .download-btn:hover { background: #059669; }
+        
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .modal-content { background: white; margin: 5% auto; padding: 2rem; border-radius: 16px; width: 90%; max-width: 500px; }
+        .close { float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: #ef4444; }
+        
+        .form-group { margin-bottom: 1rem; }
+        .form-group input { width: 100%; padding: 0.8rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem; }
+        .btn-primary { width: 100%; padding: 1rem; background: #6366f1; color: white; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; }
+        
+        .toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background: #1f2937; color: white; padding: 1rem 2rem; border-radius: 8px; transition: bottom 0.3s; z-index: 2000; }
+        .toast.show { bottom: 2rem; }
+        
+        .voice-play-btn { background: #10b981; color: white; border: none; padding: 1rem 2rem; border-radius: 50px; cursor: pointer; font-size: 1.1rem; }
+        .voice-stop-btn { background: #ef4444; color: white; border: none; padding: 1rem 2rem; border-radius: 50px; cursor: pointer; font-size: 1.1rem; display: none; }
+    </style>
 </head>
 <body>
-    <!-- Navigation -->
+    <!-- Navbar -->
     <nav class="navbar">
         <div class="nav-container">
             <div class="logo">
-                <i class="fas fa-wand-magic-sparkles"></i>
-                <span>PICTONE</span>
+                <i class="fas fa-wand-magic-sparkles"></i> PICTONE
             </div>
-            <div class="nav-menu">
-                <!-- User Info Display (NEW) -->
-                <div class="user-info" id="userInfo" style="display:none;">
-                    <div class="user-avatar">
-                        <i class="fas fa-user-circle"></i>
-                    </div>
-                    <div class="user-details">
-                        <div class="user-name" id="userName">User</div>
-                        <div class="user-email" id="userEmail">user@email.com</div>
-                    </div>
-                </div>
-                
-                <div class="generation-counter" id="counterDisplay">
-                    <i class="fas fa-infinity"></i>
-                    <span>Unlimited</span>
-                </div>
-                <button class="nav-btn" id="historyBtn" style="display:none;">
-                    <i class="fas fa-history"></i> History
-                </button>
-                <button class="nav-btn" id="authBtn">
-                    <i class="fas fa-user"></i> Login
-                </button>
+            <div>
+                <button class="nav-btn" id="historyBtn" style="display:none;">History</button>
+                <button class="nav-btn" id="authBtn">Login</button>
             </div>
         </div>
     </nav>
@@ -44,14 +73,8 @@
     <!-- Auth Modal -->
     <div id="authModal" class="modal">
         <div class="modal-content">
-            <span class="close">&times;</span>
+            <span class="close" onclick="document.getElementById('authModal').style.display='none'">&times;</span>
             <h2 id="authTitle">Login to PICTONE</h2>
-            
-            <div class="auth-tabs">
-                <button class="tab-btn active" data-tab="login">Login</button>
-                <button class="tab-btn" data-tab="signup">Sign Up</button>
-            </div>
-
             <form id="authForm">
                 <div class="form-group" id="nameGroup" style="display:none;">
                     <input type="text" id="authName" placeholder="Full Name">
@@ -64,241 +87,98 @@
                 </div>
                 <button type="submit" class="btn-primary" id="authSubmit">Login</button>
             </form>
-            <p class="auth-message" id="authMessage"></p>
-        </div>
-    </div>
-
-    <!-- History Modal -->
-    <div id="historyModal" class="modal">
-        <div class="modal-content history-modal">
-            <span class="close" onclick="closeHistory()">&times;</span>
-            <h2><i class="fas fa-history"></i> Your Generation History</h2>
-            <div class="history-filter">
-                <button class="filter-btn active" onclick="filterHistory('all')">All</button>
-                <button class="filter-btn" onclick="filterHistory('image')">Images</button>
-                <button class="filter-btn" onclick="filterHistory('audio')">Audio</button>
-            </div>
-            <div id="historyContent" class="history-grid"></div>
+            <p id="authMessage" style="color: red; margin-top: 1rem; text-align: center;"></p>
         </div>
     </div>
 
     <!-- Main Content -->
     <div class="container">
         <header class="header">
-            <h1>Create Amazing Content with AI</h1>
-            <p>🎨 Unlimited generations • ✨ No watermarks • 🚀 100% Free • 💎 Premium Quality</p>
-            <div class="features-badge">
-                <span><i class="fas fa-check-circle"></i> 4K Quality</span>
-                <span><i class="fas fa-check-circle"></i> Fast Generation</span>
-                <span><i class="fas fa-check-circle"></i> No Limits</span>
-            </div>
+            <h1>PICTONE - AI Tools</h1>
+            <p>Create Amazing Content with AI - Free & Unlimited</p>
         </header>
 
         <!-- Tool Selection -->
         <div class="tool-selector">
-            <button class="tool-btn active" data-tool="text-to-image">
-                <i class="fas fa-image"></i>
-                <span>Text to Image</span>
-                <small>4K Quality</small>
+            <button class="tool-btn active" onclick="switchTool('text-to-image')">
+                <i class="fas fa-image"></i> Text to Image
             </button>
-            <button class="tool-btn" data-tool="text-to-audio">
-                <i class="fas fa-music"></i>
-                <span>Text to Audio</span>
-                <small>Natural Voice</small>
+            <button class="tool-btn" onclick="switchTool('text-to-audio')">
+                <i class="fas fa-music"></i> Text to Audio
             </button>
         </div>
 
-        <!-- Text to Image Tool -->
+        <!-- Text to Image -->
         <div class="tool-container active" id="text-to-image">
-            <div class="input-section">
-                <h2><i class="fas fa-paintbrush"></i> Text to Image Generator</h2>
-                <p class="tool-description">Create stunning HD images from text descriptions</p>
-                
-                <textarea 
-                    id="imagePrompt" 
-                    placeholder="Describe your image in detail... (e.g., 'A majestic dragon flying over a fantasy castle at sunset, highly detailed, 4K')"
-                    rows="4"
-                ></textarea>
-                
-                <div class="advanced-options">
-                    <h3><i class="fas fa-sliders-h"></i> Advanced Options</h3>
-                    <div class="options-grid">
-                        <div class="option-group">
-                            <label>Style:</label>
-                            <select id="imageStyle">
-                                <option value="">None (Natural)</option>
-                                <option value="anime">Anime</option>
-                                <option value="photographic">Photographic</option>
-                                <option value="digital-art">Digital Art</option>
-                                <option value="comic-book">Comic Book</option>
-                                <option value="fantasy-art">Fantasy Art</option>
-                                <option value="analog-film">Analog Film</option>
-                                <option value="neon-punk">Neon Punk</option>
-                                <option value="isometric">Isometric</option>
-                                <option value="low-poly">Low Poly</option>
-                                <option value="origami">Origami</option>
-                                <option value="line-art">Line Art</option>
-                                <option value="cinematic">Cinematic</option>
-                                <option value="3d-model">3D Model</option>
-                                <option value="pixel-art">Pixel Art</option>
-                            </select>
-                        </div>
-                        <div class="option-group">
-                            <label>Quality:</label>
-                            <select id="imageQuality">
-                                <option value="standard">Standard (Fast)</option>
-                                <option value="hd">HD (Recommended)</option>
-                                <option value="4k">4K (Best Quality)</option>
-                            </select>
-                        </div>
-                        <div class="option-group">
-                            <label>Aspect Ratio:</label>
-                            <select id="aspectRatio">
-                                <option value="1:1">Square (1:1)</option>
-                                <option value="16:9">Landscape (16:9)</option>
-                                <option value="9:16">Portrait (9:16)</option>
-                                <option value="4:3">Classic (4:3)</option>
-                                <option value="21:9">Ultra Wide (21:9)</option>
-                            </select>
-                        </div>
-                        <div class="option-group">
-                            <label>Enhancement:</label>
-                            <select id="imageEnhancement">
-                                <option value="">None</option>
-                                <option value="enhance">Auto Enhance</option>
-                                <option value="sharp">Extra Sharp</option>
-                                <option value="vibrant">Vibrant Colors</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <button class="btn-generate" id="generateImage">
-                    <i class="fas fa-magic"></i> Generate Image
-                    <span class="btn-shine"></span>
-                </button>
-                
-                <div class="quick-prompts">
-                    <p><i class="fas fa-lightbulb"></i> Quick Prompts:</p>
-                    <button class="quick-btn" onclick="setPrompt('A futuristic cyberpunk city at night, neon lights, rainy streets, ultra detailed, 4K')">Cyberpunk City</button>
-                    <button class="quick-btn" onclick="setPrompt('A majestic dragon flying over mountains, fantasy art, epic lighting, highly detailed')">Epic Dragon</button>
-                    <button class="quick-btn" onclick="setPrompt('Beautiful sunset over ocean waves, photorealistic, golden hour, 4K')">Ocean Sunset</button>
-                    <button class="quick-btn" onclick="setPrompt('Cute robot in a garden with flowers, digital art, colorful, detailed')">Cute Robot</button>
-                </div>
-            </div>
+            <h2>Text to Image Generator</h2>
+            <textarea id="imagePrompt" rows="4" placeholder="Describe the image you want to create..."></textarea>
+            <button class="btn-generate" id="generateImage">Generate Image</button>
             
-            <div class="output-section" id="imageOutput" style="display:none;">
+            <div class="output-section" id="imageOutput">
                 <div class="loader" id="imageLoader">
                     <div class="loader-ring"></div>
-                    <p>Creating your masterpiece...</p>
+                    <p>Generating image...</p>
                 </div>
                 <div id="imageResult"></div>
             </div>
         </div>
 
-        <!-- Text to Audio Tool -->
+        <!-- Text to Audio -->
         <div class="tool-container" id="text-to-audio">
-            <div class="input-section">
-                <h2><i class="fas fa-microphone"></i> Text to Audio Generator</h2>
-                <p class="tool-description">Convert text to natural-sounding speech</p>
-                
-                <textarea 
-                    id="audioPrompt" 
-                    placeholder="Enter text to convert to speech... (e.g., 'Welcome to PICTONE, where creativity meets AI technology.')"
-                    rows="4"
-                ></textarea>
-                
-                <div class="advanced-options">
-                    <h3><i class="fas fa-sliders-h"></i> Voice Settings</h3>
-                    <div class="options-grid">
-                        <div class="option-group">
-                            <label>Language:</label>
-                            <select id="voiceLanguage">
-                                <option value="en-US">English (US)</option>
-                                <option value="en-GB">English (UK)</option>
-                                <option value="en-AU">English (Australia)</option>
-                                <option value="en-IN">English (India)</option>
-                                <option value="es-ES">Spanish (Spain)</option>
-                                <option value="es-MX">Spanish (Mexico)</option>
-                                <option value="fr-FR">French</option>
-                                <option value="de-DE">German</option>
-                                <option value="it-IT">Italian</option>
-                                <option value="pt-BR">Portuguese (Brazil)</option>
-                                <option value="ja-JP">Japanese</option>
-                                <option value="ko-KR">Korean</option>
-                                <option value="zh-CN">Chinese (Mandarin)</option>
-                            </select>
-                        </div>
-                        <div class="option-group">
-                            <label>Voice Gender:</label>
-                            <select id="voiceGender">
-                                <option value="female">Female</option>
-                                <option value="male">Male</option>
-                            </select>
-                        </div>
-                        <div class="option-group">
-                            <label>Emotion/Style:</label>
-                            <select id="voiceEmotion">
-                                <option value="general">🎯 General (Professional)</option>
-                                <option value="friendly">😊 Friendly</option>
-                                <option value="cheerful">😄 Cheerful (Happy)</option>
-                                <option value="excited">🎉 Excited</option>
-                                <option value="sad">😢 Sad</option>
-                                <option value="angry">😠 Angry</option>
-                                <option value="calm">😌 Calm (Relaxed)</option>
-                            </select>
-                        </div>
-                        <div class="option-group">
-                            <label>Speed: <span id="speedValue">1.0x</span></label>
-                            <input type="range" id="speedControl" min="0.5" max="2" step="0.1" value="1">
-                        </div>
-                        <div class="option-group">
-                            <label>Pitch: <span id="pitchValue">1.0</span></label>
-                            <input type="range" id="pitchControl" min="0.5" max="2" step="0.1" value="1">
-                        </div>
-                    </div>
-                </div>
-                
-                <button class="btn-generate" id="generateAudio">
-                    <i class="fas fa-volume-up"></i> Generate Audio
-                    <span class="btn-shine"></span>
-                </button>
+            <h2>Text to Audio Generator</h2>
+            <textarea id="audioPrompt" rows="4" placeholder="Enter text to convert to speech..."></textarea>
+            <div class="form-group">
+                <label>Language:</label>
+                <select id="voiceLanguage" style="width: 100%; padding: 0.8rem; border: 2px solid #e5e7eb; border-radius: 8px;">
+                    <option value="en-US">English (US)</option>
+                    <option value="es-ES">Spanish</option>
+                    <option value="fr-FR">French</option>
+                </select>
             </div>
+            <div class="form-group">
+                <label>Voice:</label>
+                <select id="voiceGender" style="width: 100%; padding: 0.8rem; border: 2px solid #e5e7eb; border-radius: 8px;">
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Speed: <span id="speedValue">1.0x</span></label>
+                <input type="range" id="speedControl" min="0.5" max="2" step="0.1" value="1" style="width: 100%;">
+            </div>
+            <button class="btn-generate" id="generateAudio">Generate Audio</button>
             
-            <div class="output-section" id="audioOutput" style="display:none;">
+            <div class="output-section" id="audioOutput">
                 <div class="loader" id="audioLoader">
                     <div class="loader-ring"></div>
-                    <p>Converting text to speech...</p>
+                    <p>Generating audio...</p>
                 </div>
                 <div id="audioResult"></div>
             </div>
         </div>
     </div>
 
-    <!-- Toast Notification -->
+    <!-- Toast -->
     <div id="toast" class="toast"></div>
 
-    <!-- Firebase SDKs -->
+    <!-- Firebase -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { getFirestore, collection, addDoc, query, where, orderBy, getDocs, deleteDoc, doc, serverTimestamp, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+        import { getFirestore, collection, addDoc, query, where, orderBy, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-        // Firebase Configuration - REPLACE WITH YOUR CONFIG
         const firebaseConfig = {
-            apiKey: "AIzaSyAB42AjVGh-ZbjaS7Bp4Feq11159JEl-aM",
-            authDomain: "pictone-15651.firebaseapp.com",
-            projectId: "pictone-15651",
-            storageBucket: "pictone-15651.firebasestorage.app",
-            messagingSenderId: "902231025739",
-            appId: "1:902231025739:web:85e2ccc17090579f70c5ce"
-          };
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_ID",
+            appId: "YOUR_APP_ID"
+        };
 
         const app = initializeApp(firebaseConfig);
         window.auth = getAuth(app);
         window.db = getFirestore(app);
-        window.storage = getStorage(app);
         window.firebaseModules = { 
             createUserWithEmailAndPassword, 
             signInWithEmailAndPassword, 
@@ -311,22 +191,9 @@
             where,
             orderBy,
             getDocs,
-            deleteDoc,
-            doc,
-            serverTimestamp,
-            limit,
-            ref,
-            uploadBytes,
-            getDownloadURL
+            serverTimestamp
         };
     </script>
     <script src="app.js"></script>
-    <!-- Add this BEFORE the closing </body> tag -->
-<!-- ResponsiveVoice - Free TTS Library (No API Key) -->
-<script src="https://code.responsivevoice.org/responsivevoice.js?key=jQZ2zCRg"></script>
-
-<script src="app.js"></script>
-</body>
-</html>
 </body>
 </html>
