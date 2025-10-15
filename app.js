@@ -251,6 +251,10 @@ function updateUI() {
 // IMAGE GENERATION - 100% WORKING
 // ========================================
 
+// ========================================
+// IMAGE GENERATION - FIXED DISPLAY ISSUE
+// ========================================
+
 function generateImage() {
     console.log('🎨 Generate Image Started');
     
@@ -290,29 +294,29 @@ function generateImage() {
     
     if (style) {
         var styleText = {
-            'anime': ' anime style, vibrant colors',
-            'photographic': ' professional photography, 4K',
-            'digital-art': ' digital art, detailed',
-            'comic-book': ' comic book style',
-            'fantasy-art': ' fantasy art',
-            'analog-film': ' film photo, vintage',
-            'neon-punk': ' cyberpunk, neon lights',
-            'isometric': ' isometric view',
-            'low-poly': ' low poly 3D',
-            'origami': ' paper art',
-            'line-art': ' line art',
-            'cinematic': ' cinematic lighting',
-            '3d-model': ' 3D render',
-            'pixel-art': ' pixel art'
+            'anime': ', anime style, vibrant colors',
+            'photographic': ', professional photography, 4K',
+            'digital-art': ', digital art, detailed',
+            'comic-book': ', comic book style',
+            'fantasy-art': ', fantasy art',
+            'analog-film': ', film photo, vintage',
+            'neon-punk': ', cyberpunk, neon lights',
+            'isometric': ', isometric view',
+            'low-poly': ', low poly 3D',
+            'origami': ', paper art',
+            'line-art': ', line art',
+            'cinematic': ', cinematic lighting',
+            '3d-model': ', 3D render',
+            'pixel-art': ', pixel art'
         };
         fullPrompt += styleText[style] || '';
     }
     
     if (enhancement) {
         var enhanceText = {
-            'enhance': ' masterpiece, best quality',
-            'sharp': ' ultra sharp, 8K',
-            'vibrant': ' vibrant colors'
+            'enhance': ', masterpiece, best quality',
+            'sharp': ', ultra sharp, 8K',
+            'vibrant': ', vibrant colors'
         };
         fullPrompt += enhanceText[enhancement] || '';
     }
@@ -340,40 +344,56 @@ function generateImage() {
                    '&nologo=true&enhance=true';
     
     console.log('📸 Image URL:', imageUrl);
+    console.log('🔗 Test URL in browser:', imageUrl);
     
-    // Display image
-    setTimeout(function() {
+    // PRE-LOAD IMAGE TO CHECK IF IT WORKS
+    var testImg = new Image();
+    testImg.crossOrigin = 'anonymous';
+    
+    testImg.onload = function() {
+        console.log('✅ Image loaded successfully!');
+        
         var timeTaken = ((Date.now() - startTime) / 1000).toFixed(1);
         
-        var html = '<div class="result-item">';
-        html += '<img src="' + imageUrl + '" ';
-        html += 'alt="Generated Image" ';
-        html += 'crossorigin="anonymous" ';
-        html += 'style="max-width: 100%; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); margin-bottom: 1.5rem; transition: transform 0.3s; display: block;" ';
-        html += 'onload="console.log(\'✅ Image loaded!\')" ';
-        html += 'onerror="console.log(\'❌ Image load error\')">';
-        html += '<div class="result-info">';
-        html += '<p><strong>Prompt:</strong> ' + prompt + '</p>';
-        html += '<p><strong>Style:</strong> ' + (style || 'Natural') + ' | ';
-        html += '<strong>Quality:</strong> ' + quality.toUpperCase() + ' | ';
-        html += '<strong>Size:</strong> ' + width + 'x' + height + '</p>';
-        html += '<p><strong>⏱️ Generated in:</strong> ' + timeTaken + 's</p>';
-        html += '</div>';
-        html += '<div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">';
-        html += '<button class="download-btn" onclick="downloadImage(\'' + imageUrl + '\', \'' + prompt.replace(/'/g, "\\'") + '\')">';
-        html += '<i class="fas fa-download"></i> Download Image';
-        html += '</button>';
-        html += '<button class="download-btn" style="background: #6366f1;" onclick="generateImage()">';
-        html += '<i class="fas fa-sync"></i> Regenerate';
-        html += '</button>';
-        html += '</div>';
-        html += '</div>';
+        // NOW DISPLAY THE IMAGE
+        resultDiv.innerHTML = 
+            '<div class="result-item">' +
+            '<img src="' + imageUrl + '" ' +
+            'alt="Generated Image" ' +
+            'crossorigin="anonymous" ' +
+            'style="width: 100%; max-width: 100%; height: auto; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); margin-bottom: 1.5rem; display: block !important; visibility: visible !important;">' +
+            '<div class="result-info">' +
+            '<p><strong>Prompt:</strong> ' + prompt + '</p>' +
+            '<p><strong>Style:</strong> ' + (style || 'Natural') + ' | ' +
+            '<strong>Quality:</strong> ' + quality.toUpperCase() + ' | ' +
+            '<strong>Size:</strong> ' + width + 'x' + height + '</p>' +
+            '<p><strong>⏱️ Generated in:</strong> ' + timeTaken + 's</p>' +
+            '</div>' +
+            '<div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">' +
+            '<button class="download-btn" onclick="downloadImage(\'' + imageUrl + '\', \'' + prompt.replace(/'/g, "\\'") + '\')">' +
+            '<i class="fas fa-download"></i> Download Image' +
+            '</button>' +
+            '<button class="download-btn" style="background: #6366f1;" onclick="generateImage()">' +
+            '<i class="fas fa-sync"></i> Regenerate' +
+            '</button>' +
+            '</div>' +
+            '</div>';
         
-        resultDiv.innerHTML = html;
         loader.style.display = 'none';
         document.getElementById('generateImage').disabled = false;
         
-        console.log('✅ Image displayed successfully!');
+        console.log('✅ Image HTML inserted into DOM');
+        console.log('📍 Check if image is visible on screen');
+        
+        // Verify image is in DOM
+        var imgElement = resultDiv.querySelector('img');
+        if (imgElement) {
+            console.log('✅ Image element found in DOM');
+            console.log('📏 Image dimensions:', imgElement.width, 'x', imgElement.height);
+            console.log('👁️ Image visible:', imgElement.offsetWidth > 0 && imgElement.offsetHeight > 0);
+        } else {
+            console.error('❌ Image element NOT found in DOM!');
+        }
         
         // Save to history
         if (window.db && currentUser) {
@@ -404,37 +424,46 @@ function generateImage() {
         
         generationCount++;
         showToast('✨ Image generated in ' + timeTaken + 's!');
-        
-    }, 800);
-}
-
-function downloadImage(url, prompt) {
-    console.log('📥 Downloading image...');
-    showToast('📥 Downloading image...');
+    };
     
-    fetch(url)
-        .then(function(response) {
-            return response.blob();
-        })
-        .then(function(blob) {
-            var link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            var filename = 'pictone_' + prompt.substring(0, 20).replace(/[^a-z0-9]/gi, '_') + '_' + Date.now() + '.png';
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(link.href);
-            console.log('✅ Downloaded:', filename);
-            showToast('✅ Image downloaded!');
-        })
-        .catch(function(error) {
-            console.log('⚠️ Download error, opening in new tab');
-            window.open(url, '_blank');
-            showToast('✅ Image opened in new tab!');
-        });
+    testImg.onerror = function(error) {
+        console.error('❌ Image failed to load!');
+        console.error('Error:', error);
+        console.error('URL:', imageUrl);
+        
+        loader.style.display = 'none';
+        document.getElementById('generateImage').disabled = false;
+        
+        // Show error with clickable URL
+        resultDiv.innerHTML = 
+            '<div style="text-align: center; padding: 2rem; background: #fee; border-radius: 12px;">' +
+            '<p style="color: #ef4444; font-weight: 600; margin-bottom: 1rem;">⚠️ Image failed to load</p>' +
+            '<p style="color: #666; margin-bottom: 1rem; font-size: 0.9rem;">The image URL was created but couldn\'t be loaded. This might be due to:</p>' +
+            '<ul style="text-align: left; color: #666; margin: 0 auto 1rem; max-width: 400px; font-size: 0.85rem;">' +
+            '<li>Internet connection issue</li>' +
+            '<li>Pollinations.ai service temporarily down</li>' +
+            '<li>Network/Firewall blocking the image</li>' +
+            '</ul>' +
+            '<p style="margin-bottom: 1rem;"><strong>Try this:</strong></p>' +
+            '<button class="download-btn" onclick="window.open(\'' + imageUrl + '\', \'_blank\')" style="margin: 0.5rem;">' +
+            '<i class="fas fa-external-link-alt"></i> Open Image URL in New Tab' +
+            '</button>' +
+            '<button class="download-btn" style="background: #6366f1; margin: 0.5rem;" onclick="generateImage()">' +
+            '<i class="fas fa-redo"></i> Try Again' +
+            '</button>' +
+            '<details style="margin-top: 1rem; text-align: left; max-width: 600px; margin-left: auto; margin-right: auto;">' +
+            '<summary style="cursor: pointer; color: #666; font-size: 0.9rem;">Show Image URL</summary>' +
+            '<p style="word-break: break-all; background: #f5f5f5; padding: 0.5rem; border-radius: 4px; font-size: 0.75rem; margin-top: 0.5rem;">' + imageUrl + '</p>' +
+            '</details>' +
+            '</div>';
+        
+        showToast('❌ Image failed to load');
+    };
+    
+    // Start loading the image
+    console.log('⏳ Loading image...');
+    testImg.src = imageUrl;
 }
-
 // ========================================
 // AUDIO GENERATION - 100% WORKING
 // ========================================
