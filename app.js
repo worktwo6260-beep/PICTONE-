@@ -412,7 +412,277 @@ function getImageDimensions(ratio, quality) {
     };
 }
 
+// ========================================
+// OPTIMIZED IMAGE GENERATION - Shows Time Only
+// ========================================
 
+async function generateImage() {
+    const prompt = document.getElementById('imagePrompt').value.trim();
+    const style = document.getElementById('imageStyle').value;
+    const quality = document.getElementById('imageQuality').value;
+    const aspectRatio = document.getElementById('aspectRatio').value;
+    const enhancement = document.getElementById('imageEnhancement') ? document.getElementById('imageEnhancement').value : '';
+    
+    if (!prompt) {
+        showToast('⚠️ Please enter a prompt!');
+        return;
+    }
+    
+    if (!currentUser) {
+        showToast('🔐 Please login to generate images!');
+        document.getElementById('authModal').style.display = 'block';
+        return;
+    }
+    
+    const outputSection = document.getElementById('imageOutput');
+    const loader = document.getElementById('imageLoader');
+    const resultDiv = document.getElementById('imageResult');
+    
+    outputSection.style.display = 'block';
+    loader.style.display = 'block';
+    resultDiv.innerHTML = '';
+    
+    document.getElementById('generateImage').disabled = true;
+    
+    // Start timer
+    const startTime = Date.now();
+    
+    try {
+        console.log('🎨 Starting image generation...');
+        
+        // Build enhanced prompt
+        let enhancedPrompt = buildEnhancedPrompt(prompt, style, enhancement);
+        
+        // Get dimensions
+        const dimensions = getImageDimensions(aspectRatio, quality);
+        
+        // Try multiple APIs with timeout
+        let imageUrl = null;
+        
+        // Method 1: Pollinations (Fast)
+        try {
+            console.log('📡 Generating image...');
+            imageUrl = await generateWithPollinations(enhancedPrompt, dimensions);
+        } catch (error) {
+            console.log('Trying alternative method...');
+        }
+        
+        // Method 2: Alternative endpoint
+        if (!imageUrl) {
+            try {
+                imageUrl = await generateWithReplicate(enhancedPrompt, dimensions);
+            } catch (error) {
+                console.log('Trying final method...');
+            }
+        }
+        
+        // Method 3: Hugging Face (Backup)
+        if (!imageUrl) {
+            try {
+                imageUrl = await generateWithHuggingFace(enhancedPrompt, dimensions);
+            } catch (error) {
+                throw new Error('Generation failed. Please try again.');
+            }
+        }
+        
+        if (!imageUrl) {
+            throw new Error('All generation methods failed. Please try again.');
+        }
+        
+        // Calculate time taken
+        const endTime = Date.now();
+        const timeTaken = ((endTime - startTime) / 1000).toFixed(1);
+        
+        console.log(`✅ Generated in ${timeTaken}s`);
+        
+        // Display image with time
+        resultDiv.innerHTML = `
+            <div class="result-item">
+                <img src="${imageUrl}" alt="Generated Image" crossorigin="anonymous" loading="eager">
+                <div class="result-info">
+                    <p><strong>📝 Prompt:</strong> ${prompt}</p>
+                    <p><strong>🎨 Style:</strong> ${style || 'Natural'} | <strong>📐 Size:</strong> ${dimensions.width}x${dimensions.height}</p>
+                    <p><strong>⏱️ Generated in:</strong> ${timeTaken}s</p>
+                </div>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
+                    <button class="download-btn" onclick="downloadImageFromUrl('${imageUrl}', '${prompt}')">
+                        <i class="fas fa-download"></i> Download Image
+                    </button>
+                    <button class="download-btn" style="background: #6366f1;" onclick="generateImage()">
+                        <i class="fas fa-sync"></i> Regenerate
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Save to history
+        await saveToHistory('image', prompt, imageUrl, {
+            style: style || 'Natural',
+            quality: quality,
+            dimensions: `${dimensions.width}x${dimensions.height}`,
+            timeTaken: timeTaken
+        });
+        
+        generationCount++;
+        showToast(`✅ Generated in ${timeTaken}s!`);
+        
+    } catch (error) {
+        console.error('❌ Error:', error);
+        showToast('❌ ' + error.message);
+        
+        resultDiv.innerHTML = `
+            <div style="text-align: center; padding: 2rem;">
+                <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem;"></i>
+                <p style="color: #ef4444; margin-bottom: 0.5rem; font-weight: 600;">Generation Failed</p>
+                <p style="color: #666; font-size: 0.9rem; margin-bottom: 1.5rem;">
+                    ${error.message}<br>
+                    <small>Try: Shorter prompt or different style</small>
+                </p>
+                <button class="btn-generate" onclick="generateImage()">
+                    <i class="fas fa-redo"></i> Try Again
+                </button>
+            </div>
+        `;
+    } finally {
+        loader.style.display = 'none';
+        document.getElementById('generateImage').disabled = false;
+    }
+}
+
+// ========================================
+// API Methods (Keep these same as before)
+// ========================================
+
+async function generateWithPollinations(prompt, dimensions) {
+    const seed = Math.floor(Math.random() * 1000000);
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${dimensions.width}&height=${dimensions.height}&seed=${seed}&nologo=true&enhance=true`;
+    
+    return await timeoutPromise(10000, new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(url);
+        img.onerror = () => reject(new Error('Failed'));
+        img.src = url;
+    }));
+}
+
+async function generateWithHuggingFace(prompt, dimensions) {
+    const apiUrl = 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1';
+    
+    const response = await timeoutPromise(15000, fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            inputs: prompt,
+            parameters: {
+                width: dimensions.width,
+                height: dimensions.height,
+                num_inference_steps: 30
+            }
+        })
+    }));
+    
+    if (!response.ok) throw new Error('API error');
+    
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+}
+
+async function generateWithReplicate(prompt, dimensions) {
+    const models = ['flux', 'flux-realism', 'turbo'];
+    const model = models[Math.floor(Math.random() * models.length)];
+    
+    const url = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=${dimensions.width}&height=${dimensions.height}&model=${model}&nologo=true`;
+    
+    return await timeoutPromise(10000, new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(url);
+        img.onerror = () => reject(new Error('Failed'));
+        img.src = url;
+    }));
+}
+
+function timeoutPromise(ms, promise) {
+    return new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+            reject(new Error(`Timeout`));
+        }, ms);
+        
+        promise.then(
+            (result) => {
+                clearTimeout(timeoutId);
+                resolve(result);
+            },
+            (error) => {
+                clearTimeout(timeoutId);
+                reject(error);
+            }
+        );
+    });
+}
+
+function buildEnhancedPrompt(prompt, style, enhancement) {
+    let enhanced = prompt;
+    
+    if (style) {
+        const styleModifiers = {
+            'anime': ', anime style, vibrant colors',
+            'photographic': ', professional photography, 4K',
+            'digital-art': ', digital art, detailed',
+            'comic-book': ', comic book style',
+            'fantasy-art': ', fantasy art, detailed',
+            'analog-film': ', film photo, vintage',
+            'neon-punk': ', cyberpunk, neon lights',
+            'isometric': ', isometric view',
+            'low-poly': ', low poly, 3D',
+            'origami': ', paper art',
+            'line-art': ', line art',
+            'cinematic': ', cinematic lighting',
+            '3d-model': ', 3D render',
+            'pixel-art': ', pixel art'
+        };
+        enhanced += styleModifiers[style] || '';
+    }
+    
+    if (enhancement) {
+        const enhanceModifiers = {
+            'enhance': ', masterpiece, best quality',
+            'sharp': ', ultra sharp, 8K',
+            'vibrant': ', vibrant colors'
+        };
+        enhanced += enhanceModifiers[enhancement] || '';
+    }
+    
+    enhanced += ', high quality';
+    
+    return enhanced;
+}
+
+function getImageDimensions(ratio, quality) {
+    const qualityMultipliers = {
+        'standard': 1,
+        'hd': 1.25,
+        '4k': 1.5
+    };
+    
+    const multiplier = qualityMultipliers[quality] || 1;
+    
+    const baseDimensions = {
+        '1:1': { width: 768, height: 768 },
+        '16:9': { width: 896, height: 512 },
+        '9:16': { width: 512, height: 896 },
+        '4:3': { width: 768, height: 576 },
+        '21:9': { width: 1024, height: 440 }
+    };
+    
+    const base = baseDimensions[ratio] || baseDimensions['1:1'];
+    
+    return {
+        width: Math.floor(base.width * multiplier),
+        height: Math.floor(base.height * multiplier)
+    };
+}
 // SIMPLE WORKING AUDIO - BROWSER ONLY
 // No external libraries needed
 // GUARANTEED TO WORK
