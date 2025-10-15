@@ -225,32 +225,38 @@ function updateUI() {
         historyBtn.style.display = 'none';
     }
 }
-
-// ========================================
-// TEXT TO IMAGE GENERATION - FIXED VERSION
-// ========================================
-
+// tedt to image
 async function generateImage() {
     const prompt = document.getElementById('imagePrompt').value.trim();
-    const style = document.getElementById('imageStyle').value;
-    const quality = document.getElementById('imageQuality').value;
-    const aspectRatio = document.getElementById('aspectRatio').value;
-    const enhancement = document.getElementById('imageEnhancement') ? document.getElementById('imageEnhancement').value : '';
+    
+    console.log('=== DEBUG START ===');
+    console.log('1. Prompt:', prompt);
     
     if (!prompt) {
-        showToast('⚠️ Please enter a prompt!');
+        alert('Please enter a prompt!');
+        console.log('ERROR: No prompt');
         return;
     }
     
+    console.log('2. User:', currentUser ? currentUser.email : 'NO USER');
+    
     if (!currentUser) {
-        showToast('🔐 Please login to generate images!');
+        alert('Please login first!');
+        console.log('ERROR: No user logged in');
         document.getElementById('authModal').style.display = 'block';
         return;
     }
     
+    console.log('3. Getting elements...');
     const outputSection = document.getElementById('imageOutput');
     const loader = document.getElementById('imageLoader');
     const resultDiv = document.getElementById('imageResult');
+    
+    console.log('4. Elements found:', {
+        outputSection: !!outputSection,
+        loader: !!loader,
+        resultDiv: !!resultDiv
+    });
     
     outputSection.style.display = 'block';
     loader.style.display = 'block';
@@ -258,151 +264,64 @@ async function generateImage() {
     
     document.getElementById('generateImage').disabled = true;
     
-    const startTime = Date.now();
+    console.log('5. Building URL...');
     
-    try {
-        // Build enhanced prompt
-        let enhancedPrompt = prompt;
-        
-        if (style) {
-            const styles = {
-                'anime': ', anime style, vibrant colors',
-                'photographic': ', professional photography, 4K',
-                'digital-art': ', digital art, detailed',
-                'comic-book': ', comic book style',
-                'fantasy-art': ', fantasy art, detailed',
-                'analog-film': ', film photo, vintage',
-                'neon-punk': ', cyberpunk, neon lights',
-                'isometric': ', isometric view',
-                'low-poly': ', low poly, 3D',
-                'origami': ', paper art',
-                'line-art': ', line art',
-                'cinematic': ', cinematic lighting',
-                '3d-model': ', 3D render',
-                'pixel-art': ', pixel art'
-            };
-            enhancedPrompt += styles[style] || '';
-        }
-        
-        if (enhancement) {
-            const enhance = {
-                'enhance': ', masterpiece, best quality',
-                'sharp': ', ultra sharp, 8K',
-                'vibrant': ', vibrant colors'
-            };
-            enhancedPrompt += enhance[enhancement] || '';
-        }
-        
-        enhancedPrompt += ', high quality, detailed';
-        
-        // Get dimensions
-        const qualityMult = { 'standard': 1, 'hd': 1.5, '4k': 2 };
-        const mult = qualityMult[quality] || 1;
-        
-        const baseDims = {
-            '1:1': [768, 768],
-            '16:9': [896, 512],
-            '9:16': [512, 896],
-            '4:3': [768, 576],
-            '21:9': [1024, 440]
-        };
-        
-        const [baseW, baseH] = baseDims[aspectRatio] || baseDims['1:1'];
-        const width = Math.floor(baseW * mult);
-        const height = Math.floor(baseH * mult);
-        
-        // Generate image URL
-        const seed = Math.floor(Math.random() * 1000000);
-        const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=true`;
-        
-        console.log('🎨 Image URL:', imageUrl);
-        
-        // Calculate time
-        const timeTaken = ((Date.now() - startTime) / 1000).toFixed(1);
-        
-        // Display image
-        resultDiv.innerHTML = `
-            <div class="result-item">
-                <img src="${imageUrl}" alt="Generated Image" crossorigin="anonymous" style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                <div class="result-info">
-                    <p><strong>Prompt:</strong> ${prompt}</p>
-                    <p><strong>Style:</strong> ${style || 'Natural'} | <strong>Quality:</strong> ${quality.toUpperCase()} | <strong>Size:</strong> ${width}x${height}</p>
-                    <p><strong>⏱️ Generated in:</strong> ${timeTaken}s</p>
-                </div>
-                <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
-                    <button class="download-btn" onclick="downloadImageFromUrl('${imageUrl}', '${prompt.replace(/'/g, "\\'")}')">
-                        <i class="fas fa-download"></i> Download Image
-                    </button>
-                    <button class="download-btn" style="background: #6366f1;" onclick="generateImage()">
-                        <i class="fas fa-sync"></i> Regenerate
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        // Save to history
-        await saveToHistory('image', prompt, imageUrl, {
-            style: style || 'Natural',
-            quality: quality,
-            dimensions: `${width}x${height}`,
-            timeTaken: timeTaken
-        });
-        
-        generationCount++;
-        showToast(`✨ Image generated in ${timeTaken}s!`);
-        
-        loader.style.display = 'none';
-        document.getElementById('generateImage').disabled = false;
-        
-    } catch (error) {
-        console.error('Generation error:', error);
-        showToast('❌ Error generating image. Please try again.');
-        
-        resultDiv.innerHTML = `
-            <div style="text-align: center; padding: 2rem;">
-                <p style="color: #ef4444; margin-bottom: 1rem;">Failed to generate image. Please try again.</p>
-                <button class="btn-generate" onclick="generateImage()">
-                    <i class="fas fa-redo"></i> Try Again
-                </button>
-            </div>
-        `;
-        
-        loader.style.display = 'none';
-        document.getElementById('generateImage').disabled = false;
+    const style = document.getElementById('imageStyle').value;
+    const quality = document.getElementById('imageQuality').value;
+    const aspectRatio = document.getElementById('aspectRatio').value;
+    
+    console.log('6. Settings:', { style, quality, aspectRatio });
+    
+    // Simple prompt
+    let finalPrompt = prompt + ', high quality';
+    
+    // Simple size
+    let width = 512;
+    let height = 512;
+    
+    if (aspectRatio === '16:9') {
+        width = 768;
+        height = 432;
     }
+    
+    console.log('7. Size:', width, 'x', height);
+    
+    // Create URL
+    const seed = Date.now();
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${width}&height=${height}&seed=${seed}&nologo=true`;
+    
+    console.log('8. IMAGE URL:', imageUrl);
+    console.log('9. Click this URL to test:', imageUrl);
+    
+    // Show image IMMEDIATELY (no waiting)
+    console.log('10. Displaying image...');
+    
+    resultDiv.innerHTML = `
+        <div class="result-item">
+            <p style="color: green; font-weight: bold;">✅ Image URL Created!</p>
+            <p style="font-size: 12px; word-break: break-all; background: #f0f0f0; padding: 10px;">${imageUrl}</p>
+            <img src="${imageUrl}" alt="Generated" style="max-width: 100%; border: 2px solid green; border-radius: 8px; margin-top: 10px;" onload="console.log('IMAGE LOADED!')" onerror="console.log('IMAGE FAILED TO LOAD!')">
+            <div style="margin-top: 1rem;">
+                <p><strong>Prompt:</strong> ${prompt}</p>
+                <p><strong>Size:</strong> ${width}x${height}</p>
+            </div>
+            <button class="download-btn" onclick="window.open('${imageUrl}', '_blank')" style="margin-top: 1rem;">
+                <i class="fas fa-download"></i> Open Image
+            </button>
+        </div>
+    `;
+    
+    console.log('11. Image HTML added to page');
+    
+    loader.style.display = 'none';
+    document.getElementById('generateImage').disabled = false;
+    
+    console.log('=== DEBUG END ===');
+    console.log('Check if image appears above ⬆️');
 }
 
-async function downloadImageFromUrl(url, prompt) {
-    try {
-        showToast('📥 Downloading image...');
-        
-        const response = await fetch(url);
-        const blob = await response.blob();
-        
-        const downloadUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = `pictone_${sanitizeFilename(prompt)}_${Date.now()}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(downloadUrl);
-        
-        showToast('✅ Image downloaded successfully!');
-    } catch (error) {
-        console.error('Download error:', error);
-        window.open(url, '_blank');
-        showToast('✅ Image opened in new tab!');
-    }
-}
 
-function sanitizeFilename(text) {
-    return text.substring(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase();
-}
-
-// ========================================
-// TEXT TO AUDIO GENERATION - NOT CHANGED
-// ========================================
+//--text ro audio--------
 
 async function generateAudio() {
     const text = document.getElementById('audioPrompt').value.trim();
