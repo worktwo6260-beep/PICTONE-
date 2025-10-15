@@ -226,100 +226,77 @@ function updateUI() {
     }
 }
 // tedt to image
-async function generateImage() {
-    const prompt = document.getElementById('imagePrompt').value.trim();
+function generateImage() {
+    // Get prompt
+    var prompt = document.getElementById('imagePrompt').value.trim();
     
-    console.log('=== DEBUG START ===');
-    console.log('1. Prompt:', prompt);
-    
+    // Check prompt
     if (!prompt) {
         alert('Please enter a prompt!');
-        console.log('ERROR: No prompt');
         return;
     }
     
-    console.log('2. User:', currentUser ? currentUser.email : 'NO USER');
-    
+    // Check user
     if (!currentUser) {
         alert('Please login first!');
-        console.log('ERROR: No user logged in');
         document.getElementById('authModal').style.display = 'block';
         return;
     }
     
-    console.log('3. Getting elements...');
-    const outputSection = document.getElementById('imageOutput');
-    const loader = document.getElementById('imageLoader');
-    const resultDiv = document.getElementById('imageResult');
+    // Get elements
+    var outputSection = document.getElementById('imageOutput');
+    var loader = document.getElementById('imageLoader');
+    var resultDiv = document.getElementById('imageResult');
     
-    console.log('4. Elements found:', {
-        outputSection: !!outputSection,
-        loader: !!loader,
-        resultDiv: !!resultDiv
-    });
-    
+    // Show loader
     outputSection.style.display = 'block';
     loader.style.display = 'block';
     resultDiv.innerHTML = '';
     
+    // Disable button
     document.getElementById('generateImage').disabled = true;
     
-    console.log('5. Building URL...');
+    // Create image URL (DIRECT - NO ASYNC)
+    var cleanPrompt = prompt + ', high quality, detailed';
+    var imageUrl = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(cleanPrompt) + '?width=768&height=768&nologo=true&seed=' + Date.now();
     
-    const style = document.getElementById('imageStyle').value;
-    const quality = document.getElementById('imageQuality').value;
-    const aspectRatio = document.getElementById('aspectRatio').value;
+    // Show image IMMEDIATELY
+    resultDiv.innerHTML = '<div class="result-item">' +
+        '<img src="' + imageUrl + '" alt="Generated Image" style="max-width:100%; border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">' +
+        '<div style="margin-top:1rem;">' +
+        '<p><strong>Prompt:</strong> ' + prompt + '</p>' +
+        '<p><strong>Size:</strong> 768x768</p>' +
+        '</div>' +
+        '<div style="display:flex; gap:1rem; margin-top:1rem;">' +
+        '<button class="download-btn" onclick="window.open(\'' + imageUrl + '\', \'_blank\')"><i class="fas fa-download"></i> Download</button>' +
+        '<button class="download-btn" style="background:#6366f1;" onclick="generateImage()"><i class="fas fa-sync"></i> Regenerate</button>' +
+        '</div>' +
+        '</div>';
     
-    console.log('6. Settings:', { style, quality, aspectRatio });
-    
-    // Simple prompt
-    let finalPrompt = prompt + ', high quality';
-    
-    // Simple size
-    let width = 512;
-    let height = 512;
-    
-    if (aspectRatio === '16:9') {
-        width = 768;
-        height = 432;
-    }
-    
-    console.log('7. Size:', width, 'x', height);
-    
-    // Create URL
-    const seed = Date.now();
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${width}&height=${height}&seed=${seed}&nologo=true`;
-    
-    console.log('8. IMAGE URL:', imageUrl);
-    console.log('9. Click this URL to test:', imageUrl);
-    
-    // Show image IMMEDIATELY (no waiting)
-    console.log('10. Displaying image...');
-    
-    resultDiv.innerHTML = `
-        <div class="result-item">
-            <p style="color: green; font-weight: bold;">✅ Image URL Created!</p>
-            <p style="font-size: 12px; word-break: break-all; background: #f0f0f0; padding: 10px;">${imageUrl}</p>
-            <img src="${imageUrl}" alt="Generated" style="max-width: 100%; border: 2px solid green; border-radius: 8px; margin-top: 10px;" onload="console.log('IMAGE LOADED!')" onerror="console.log('IMAGE FAILED TO LOAD!')">
-            <div style="margin-top: 1rem;">
-                <p><strong>Prompt:</strong> ${prompt}</p>
-                <p><strong>Size:</strong> ${width}x${height}</p>
-            </div>
-            <button class="download-btn" onclick="window.open('${imageUrl}', '_blank')" style="margin-top: 1rem;">
-                <i class="fas fa-download"></i> Open Image
-            </button>
-        </div>
-    `;
-    
-    console.log('11. Image HTML added to page');
-    
+    // Hide loader
     loader.style.display = 'none';
     document.getElementById('generateImage').disabled = false;
     
-    console.log('=== DEBUG END ===');
-    console.log('Check if image appears above ⬆️');
+    // Save to history
+    if (window.db && currentUser) {
+        window.firebaseModules.addDoc(
+            window.firebaseModules.collection(window.db, 'history'),
+            {
+                userId: currentUser.uid,
+                userEmail: currentUser.email,
+                type: 'image',
+                prompt: prompt,
+                fileUrl: imageUrl,
+                createdAt: window.firebaseModules.serverTimestamp()
+            }
+        ).catch(function(e) {
+            console.log('History save failed:', e);
+        });
+    }
+    
+    // Show toast
+    showToast('✅ Image generated!');
 }
-
 
 //--text ro audio--------
 
