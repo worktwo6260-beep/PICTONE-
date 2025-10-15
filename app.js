@@ -530,4 +530,355 @@ async function generateAudio() {
                 <p style="color: #ef4444; font-weight: 600;">Failed to generate audio</p>
                 <p style="color: #666; margin: 1rem 0;">${error.message}</p>
                 <button class="btn-generate" onclick="generateAudio()">
-                
+                    <i class="fas fa-redo"></i> Try Again
+                </button>
+            </div>
+        `;
+    } finally {
+        loader.style.display = 'none';
+        document.getElementById('generateAudio').disabled = false;
+    }
+}
+
+function loadVoices() {
+    return new Promise((resolve) => {
+        let voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+            resolve(voices);
+            return;
+        }
+        
+        window.speechSynthesis.onvoiceschanged = () => {
+            resolve(window.speechSynthesis.getVoices());
+        };
+        
+        setTimeout(() => {
+            resolve(window.speechSynthesis.getVoices());
+        }, 2000);
+    });
+}
+
+function selectBestVoice(voices, language, gender) {
+    if (!voices || voices.length === 0) {
+        return null;
+    }
+    
+    const langCode = language.split('-')[0].toLowerCase();
+    const femaleWords = ['female', 'woman', 'she', 'samantha', 'victoria', 'karen', 'moira', 'fiona', 'zira', 'susan'];
+    const maleWords = ['male', 'man', 'he', 'david', 'mark', 'daniel'];
+    const genderWords = gender === 'female' ? femaleWords : maleWords;
+    
+    let voice = voices.find(v => {
+        const vLang = v.lang.toLowerCase();
+        const vName = v.name.toLowerCase();
+        return vLang.includes(language.toLowerCase()) && 
+               genderWords.some(word => vName.includes(word));
+    });
+    
+    if (voice) return voice;
+    
+    voice = voices.find(v => {
+        const vLang = v.lang.toLowerCase();
+        const vName = v.name.toLowerCase();
+        return vLang.startsWith(langCode) && 
+               genderWords.some(word => vName.includes(word));
+    });
+    
+    if (voice) return voice;
+    
+    voice = voices.find(v => v.lang.toLowerCase().startsWith(langCode));
+    if (voice) return voice;
+    
+    return voices[0];
+}
+
+function playVoiceNow() {
+    if (!window.currentAudioText) {
+        showToast('❌ No text to play');
+        return;
+    }
+    
+    console.log('🔊 Playing audio...');
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(window.currentAudioText);
+    utterance.lang = window.currentAudioLang || 'en-US';
+    utterance.rate = window.currentAudioSpeed || 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    
+    if (window.currentAudioVoice) {
+        utterance.voice = window.currentAudioVoice;
+    }
+    
+    const playBtns = document.querySelectorAll('.voice-play-btn');
+    const stopBtns = document.querySelectorAll('.voice-stop-btn');
+    const statuses = document.querySelectorAll('.voice-status');
+    
+    utterance.onstart = () => {
+        console.log('✅ Audio started');
+        showToast('🔊 Playing audio...');
+        
+        playBtns.forEach(btn => btn.style.display = 'none');
+        stopBtns.forEach(btn => btn.style.display = 'flex');
+        statuses.forEach(status => {
+            status.innerHTML = '<i class="fas fa-volume-up"></i> Playing...';
+            status.style.color = '#10b981';
+        });
+    };
+    
+    utterance.onend = () => {
+        console.log('✅ Audio finished');
+        showToast('✅ Finished playing');
+        
+        playBtns.forEach(btn => btn.style.display = 'flex');
+        stopBtns.forEach(btn => btn.style.display = 'none');
+        statuses.forEach(status => {
+            status.innerHTML = '<i class="fas fa-check-circle"></i> Ready to play again';
+            status.style.color = '#6366f1';
+        });
+    };
+    
+    utterance.onerror = (error) => {
+        console.error('❌ Audio error:', error);
+        showToast('❌ Playback error');
+        
+        playBtns.forEach(btn => btn.style.display = 'flex');
+        stopBtns.forEach(btn => btn.style.display = 'none');
+    };
+    
+    window.speechSynthesis.speak(utterance);
+}
+
+function stopVoice() {
+    console.log('⏹️ Stopping audio...');
+    window.speechSynthesis.cancel();
+    showToast('⏹️ Stopped');
+    
+    const playBtns = document.querySelectorAll('.voice-play-btn');
+    const stopBtns = document.querySelectorAll('.voice-stop-btn');
+    const statuses = document.querySelectorAll('.voice-status');
+    
+    playBtns.forEach(btn => btn.style.display = 'flex');
+    stopBtns.forEach(btn => btn.style.display = 'none');
+    statuses.forEach(status => {
+        status.innerHTML = '<i class="fas fa-info-circle"></i> Stopped';
+        status.style.color = '#6b7280';
+    });
+}
+
+function getLanguageName(code) {
+    const names = {
+        'en-US': 'English (US)',
+        'en-GB': 'English (UK)',
+        'en-AU': 'English (Australia)',
+        'en-IN': 'English (India)',
+        'es-ES': 'Spanish',
+        'fr-FR': 'French',
+        'de-DE': 'German',
+        'it-IT': 'Italian',
+        'pt-BR': 'Portuguese',
+        'ja-JP': 'Japanese',
+        'ko-KR': 'Korean',
+        'zh-CN': 'Chinese'
+    };
+    return names[code] || code;
+}
+
+// ========================================
+// Firebase History Functions
+// ========================================
+
+async function saveToHistory(type, prompt, url, metadata = {}) {
+    if (!currentUser || !window.db) {
+        console.log('Cannot save: No user or database');
+        return;
+    }
+    
+    try {
+        const historyData = {
+            userId: currentUser.uid,
+            userEmail: currentUser.email,
+            userName: currentUser.displayName || 'User',
+            type: type,
+            prompt: prompt,
+            fileUrl: url,
+            metadata: metadata,
+            createdAt: window.firebaseModules.serverTimestamp(),
+        };
+        
+        await window.firebaseModules.addDoc(
+            window.firebaseModules.collection(window.db, 'history'),
+            historyData
+        );
+        
+        clearHistoryCache();
+        console.log('Saved to history successfully');
+    } catch (error) {
+        console.error('Error saving to history:', error);
+    }
+}
+
+function clearHistoryCache() {
+    historyCache = null;
+    historyCacheTime = 0;
+}
+
+async function showHistory() {
+    if (!currentUser) {
+        showToast('🔐 Please login to view history!');
+        return;
+    }
+    
+    const modal = document.getElementById('historyModal');
+    const content = document.getElementById('historyContent');
+    
+    modal.style.display = 'block';
+    
+    const now = Date.now();
+    if (historyCache && (now - historyCacheTime) < CACHE_DURATION) {
+        console.log('Using cached history');
+        displayHistory(historyCache);
+        return;
+    }
+    
+    content.innerHTML = '<div class="loader"><div class="loader-ring"></div><p>Loading history...</p></div>';
+    
+    try {
+        const q = window.firebaseModules.query(
+            window.firebaseModules.collection(window.db, 'history'),
+            window.firebaseModules.where('userId', '==', currentUser.uid),
+            window.firebaseModules.orderBy('createdAt', 'desc'),
+            window.firebaseModules.limit(20)
+        );
+        
+        const querySnapshot = await window.firebaseModules.getDocs(q);
+        
+        const historyData = [];
+        querySnapshot.forEach((doc) => {
+            historyData.push({ id: doc.id, ...doc.data() });
+        });
+        
+        historyCache = historyData;
+        historyCacheTime = now;
+        
+        displayHistory(historyData);
+        showToast(`✅ Loaded ${historyData.length} items`);
+        
+    } catch (error) {
+        console.error('History error:', error);
+        content.innerHTML = `
+            <div style="text-align:center; padding: 2rem; grid-column: 1/-1;">
+                <p style="color: #ef4444;">Error loading history: ${error.message}</p>
+                <button class="btn-primary" onclick="showHistory()" style="margin-top: 1rem; width: auto; padding: 0.8rem 2rem;">
+                    <i class="fas fa-redo"></i> Retry
+                </button>
+            </div>
+        `;
+    }
+}
+
+function displayHistory(historyData) {
+    const content = document.getElementById('historyContent');
+    
+    if (!historyData || historyData.length === 0) {
+        content.innerHTML = `
+            <div style="text-align:center; padding: 3rem; grid-column: 1/-1;">
+                <i class="fas fa-history" style="font-size: 4rem; color: #ccc; margin-bottom: 1rem;"></i>
+                <p style="color: #666; font-size: 1.2rem;">No history yet. Start creating!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    content.innerHTML = '';
+    
+    historyData.forEach((data) => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.dataset.type = data.type;
+        
+        if (data.type === 'image') {
+            item.innerHTML = `
+                <img src="${data.fileUrl}" alt="Generated Image" loading="lazy">
+                <div class="result-info">
+                    <p><strong>Prompt:</strong> ${data.prompt.substring(0, 80)}${data.prompt.length > 80 ? '...' : ''}</p>
+                    ${data.metadata ? `<p style="font-size: 0.85rem; color: #666;">Style: ${data.metadata.style || 'Natural'} | ${data.metadata.quality || 'HD'}</p>` : ''}
+                </div>
+                <button class="download-btn" onclick="window.open('${data.fileUrl}', '_blank')">
+                    <i class="fas fa-download"></i> Download
+                </button>
+            `;
+        } else {
+            item.innerHTML = `
+                <div class="audio-player-container">
+                    <div style="padding: 2rem; text-align: center;">
+                        <i class="fas fa-music" style="font-size: 3rem; color: #6366f1;"></i>
+                    </div>
+                </div>
+                <div class="result-info">
+                    <p><strong>Text:</strong> ${data.prompt.substring(0, 100)}${data.prompt.length > 100 ? '...' : ''}</p>
+                    ${data.metadata ? `<p style="font-size: 0.85rem; color: #666;">Language: ${data.metadata.language || 'en-US'}</p>` : ''}
+                </div>
+            `;
+        }
+        
+        content.appendChild(item);
+    });
+    
+    filterHistory(currentHistoryFilter);
+}
+
+function filterHistory(filter) {
+    currentHistoryFilter = filter;
+    
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    filterButtons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.textContent.toLowerCase().includes(filter) || (filter === 'all' && btn.textContent.toLowerCase() === 'all')) {
+            btn.classList.add('active');
+        }
+    });
+    
+    const items = document.querySelectorAll('.history-item');
+    items.forEach(item => {
+        if (filter === 'all') {
+            item.style.display = 'block';
+        } else {
+            item.style.display = item.dataset.type === filter ? 'block' : 'none';
+        }
+    });
+}
+
+function closeHistory() {
+    document.getElementById('historyModal').style.display = 'none';
+}
+
+// ========================================
+// Utility Functions
+// ========================================
+
+function setPrompt(prompt) {
+    document.getElementById('imagePrompt').value = prompt;
+    document.getElementById('imagePrompt').focus();
+    showToast('✅ Prompt set! Click Generate.');
+}
+
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+if ('speechSynthesis' in window) {
+    speechSynthesis.onvoiceschanged = () => {
+        const voices = speechSynthesis.getVoices();
+        console.log('Available voices:', voices.length);
+    };
+}
+
+console.log('🚀 PICTONE loaded successfully!');
